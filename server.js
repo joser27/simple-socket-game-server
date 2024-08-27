@@ -34,13 +34,17 @@ let players = {};
 
 // Socket.io connection handler
 io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
+
+  const playerName = socket.handshake.query.playerName || 'No name';
+
+  console.log('A user connected:', socket.id, 'with name:', playerName);
 
   // Add a new player to the players object
   players[socket.id] = {
     x: Math.floor(Math.random() * 400),
     y: Math.floor(Math.random() * 400),
     id: socket.id,
+    name: playerName,
   };
 
   // Send the current players to the newly connected player
@@ -55,13 +59,14 @@ io.on('connection', (socket) => {
   // Listen for player movement
   socket.on('playerMovement', (movementData) => {
     if (players[socket.id]) {
-      players[socket.id].x = movementData.x;
-      players[socket.id].y = movementData.y;
+        players[socket.id].x = movementData.x;
+        players[socket.id].y = movementData.y;
 
-      // Broadcast the movement to all other players
-      socket.broadcast.emit('playerMoved', players[socket.id]);
+        // Broadcast the movement, including offsets, to all other players
+        socket.broadcast.emit('playerMoved', players[socket.id]);
     }
-  });
+});
+
 
   // Handle client disconnect
   socket.on('disconnect', () => {
