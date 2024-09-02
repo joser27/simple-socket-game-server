@@ -31,11 +31,19 @@ app.get('/', (req, res) => {
 });
 
 let players = {};
+let collisionTrees = [];
+const maxCollisionTrees = 100;
 
 // Socket.io connection handler
 io.on('connection', (socket) => {
+  const playerName = socket.handshake.query.playerName;
 
-  const playerName = socket.handshake.query.playerName || 'No name';
+  // Check if playerName is provided and valid
+  if (!playerName || playerName.trim() === '') {
+    console.log('Invalid player name. Disconnecting socket:', socket.id);
+    socket.disconnect();
+    return;
+  }
 
   console.log('A user connected:', socket.id, 'with name:', playerName);
 
@@ -56,17 +64,38 @@ io.on('connection', (socket) => {
   // Notify existing players about the new player
   socket.broadcast.emit('newPlayer', players[socket.id]);
 
-  // Listen for player movement
+  // Send the current trees to the newly connected player
+  socket.emit('currentTrees', collisionTrees);
+
+  // Listen for a request for current players
+  socket.on('requestCurrentPlayers', () => {
+    socket.emit('currentPlayers', players);
+  });
+  socket.on('requestCurrentTrees', () => {
+    socket.emit('currentTrees', collisionTrees);
+  });
+
+  // Server-side: Listen for player movement
   socket.on('playerMovement', (movementData) => {
     if (players[socket.id]) {
-        players[socket.id].x = movementData.x;
-        players[socket.id].y = movementData.y;
+      players[socket.id].x = movementData.x;
+      players[socket.id].y = movementData.y;
+      players[socket.id].animation = movementData.animation;
+      players[socket.id].flipX = movementData.flipX;
+      players[socket.id].name = movementData.name;  // Ensure the player name is also included
 
-        // Broadcast the movement, including offsets, to all other players
-        socket.broadcast.emit('playerMoved', players[socket.id]);
+      // Broadcast the movement and animation state to all other players
+      socket.broadcast.emit('playerMoved', players[socket.id]);
     }
-});
+  });
 
+  // Handle tree placement
+  socket.on('placeTree', (treeInfo) => {
+    if (collisionTrees.length < maxCollisionTrees) {
+      collisionTrees.push(treeInfo);
+      io.emit('placeTree', treeInfo); // Broadcast tree placement to all clients
+    }
+  });
 
   // Handle client disconnect
   socket.on('disconnect', () => {
@@ -80,6 +109,57 @@ io.on('connection', (socket) => {
   });
 });
 
+// Function to check if a position is occupied by a player or a tree
+function isPositionOccupied(x, y) {
+  // Check if the position is occupied by a player
+  for (const playerId in players) {
+    const player = players[playerId];
+    if (Math.abs(player.x - x) < 50 && Math.abs(player.y - y) < 50) {
+      return true;
+    }
+  }
+
+  // Check if the position is occupied by a tree
+  for (const tree of collisionTrees) {
+    if (Math.abs(tree.x - x) < 50 && Math.abs(tree.y - y) < 50) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// Function to place a tree at a valid position
+function placeTreeAtValidPosition() {
+  if (collisionTrees.length >= maxCollisionTrees) {
+    console.log('Max collision trees reached.');
+    return; // Do not place more than the maximum number of trees
+  }
+
+  let x, y;
+  let attempts = 0;
+  const maxAttempts = 100;
+
+  do {
+    x = Math.random() * 4096; 
+    y = Math.random() * 4096; 
+    attempts++;
+    console.log(`Attempt ${attempts}: Trying to place tree at (${x}, ${y})`);
+  } while (isPositionOccupied(x, y) && attempts < maxAttempts);
+
+  if (attempts < maxAttempts) {
+    const treeInfo = { x, y };
+    collisionTrees.push(treeInfo);
+    io.emit('placeTree', treeInfo); // Broadcast tree placement to all clients
+    console.log('Tree placed at:', x, y);
+  } else {
+    console.log('Failed to place tree after max attempts.');
+  }
+}
+
+
+// Schedule tree placement every 3 seconds
+setInterval(placeTreeAtValidPosition, 3000);
 
 // Start the server
 server.listen(port, () => {
