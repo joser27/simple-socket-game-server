@@ -41,6 +41,9 @@ io.on('connection', (socket) => {
     x: Math.floor(Math.random() * 400),
     y: Math.floor(Math.random() * 400),
     id: socket.id,
+    name: '',
+    animation: null,
+    flipX: false
   };
 
   // Send the current players to the newly connected player
@@ -52,13 +55,22 @@ io.on('connection', (socket) => {
   // Notify existing players about the new player
   socket.broadcast.emit('newPlayer', players[socket.id]);
 
+  // Add new handler for requesting current players
+  socket.on('requestCurrentPlayers', () => {
+    console.log('Player requested current players list');
+    socket.emit('currentPlayers', players);
+  });
+
   // Listen for player movement
   socket.on('playerMovement', (movementData) => {
     if (players[socket.id]) {
       players[socket.id].x = movementData.x;
       players[socket.id].y = movementData.y;
+      players[socket.id].animation = movementData.animation;
+      players[socket.id].flipX = movementData.flipX;
+      players[socket.id].name = movementData.name;
 
-      // Broadcast the movement to all other players
+      // Broadcast the complete player data
       socket.broadcast.emit('playerMoved', players[socket.id]);
     }
   });

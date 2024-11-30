@@ -1,4 +1,3 @@
-
 # **Multiplayer Game Server**
 
 This repository contains the code for a multiplayer game server built using **Node.js**, **Express**, and **Socket.IO**. The server handles real-time communication between players and can be used as part of a larger game project.
@@ -11,10 +10,19 @@ This repository contains the code for a multiplayer game server built using **No
 
 ## **Requirements**
 
-To run this server, you'll need the following:
+1. **Install Node.js and npm**:
+   - Download and install Node.js from [nodejs.org](https://nodejs.org/)
+   - Choose the "LTS" (Long Term Support) version
+   - During installation, ensure "Add to PATH" is checked
+   - After installation, restart your computer
 
-- **Node.js** (version 14.x or higher)
-- **npm** (Node Package Manager, comes with Node.js)
+2. **Verify Installation**:
+   Open a new terminal/command prompt and run:
+   ```bash
+   node --version
+   npm --version
+   ```
+   Both commands should display version numbers. If you see "command not found" or similar errors, try reinstalling Node.js.
 
 ## **Getting Started**
 
